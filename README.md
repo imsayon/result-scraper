@@ -17,6 +17,6 @@
 
 ```{
   "year": "22",
-  "branches": ["AI", "EC", "CS"]
+  "branches": ["AI", "EC", "CS", "IS"]
 }
 ```
