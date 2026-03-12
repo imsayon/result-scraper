@@ -2,10 +2,10 @@
 	"name": "dsce-result-scraper-node",
 	"version": "1.0.0",
 	"type": "module",
-	"main": "index.js",
+	"main": "scraper.js",
 	"scripts": {
-		"start": "node index.js",
-		"dev": "nodemon index.js"
+		"start": "node scraper.js",
+		"dev": "nodemon scraper.js"
 	},
 	"dependencies": {
 		"axios": "^1.6.0",

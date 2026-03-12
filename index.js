@@ -32,8 +32,10 @@ class ResultScraper {
 			const data = await pdf(pdfBuffer)
 			const text = data.text
 
+			// Improved regex to capture name without trailing "USN"
+			// Some PDFs might have "Name of the Student : NAME USN"
 			const nameMatch = text.match(
-				/Name\s*of\s*the\s*Student\s*:\s*([A-Z\s]+)/i,
+				/Name\s*of\s*the\s*Student\s*:\s*([A-Z\s]+?)(?=\s+USN|\s*\n|$)/i,
 			)
 			const name = nameMatch
 				? nameMatch[1].trim().replace(/\s+/g, " ")
@@ -89,6 +91,8 @@ class ResultScraper {
 			for (const file of files) {
 				const buffer = fs.readFileSync(path.join(branchPath, file))
 				const { name, sgpa } = await this.extractInfo(buffer)
+
+				// Extracting USN from filename (assuming format: CleanName_001.pdf)
 				const usnSuffix = file.split("_").pop().replace(".pdf", "")
 
 				deptData.push({
@@ -99,10 +103,9 @@ class ResultScraper {
 			}
 
 			if (deptData.length > 0) {
-				// Add student records
 				finalRows.push(...deptData)
 
-				// Calculate Stats
+				// FIX: Filter out 0.0 SGPA to get a real average
 				const validSGPAs = deptData
 					.map((s) => s.SGPA)
 					.filter((s) => s > 0)
@@ -113,13 +116,13 @@ class ResultScraper {
 						).toFixed(2)
 					: "0.00"
 
+				// FIX: Use "Student Name" instead of "Name" to avoid 'undefined'
 				const top5 = [...deptData]
 					.sort((a, b) => b.SGPA - a.SGPA)
 					.slice(0, 5)
-					.map((s) => `${s.Name} (${s.SGPA})`)
+					.map((s) => `${s["Student Name"]} (${s.SGPA})`)
 					.join(", ")
 
-				// Add Summary section for this department
 				finalRows.push({})
 				finalRows.push({
 					USN: `--- DEPARTMENT SUMMARY: ${branch.toUpperCase()} ---`,
@@ -139,18 +142,21 @@ class ResultScraper {
 		const ws = XLSX.utils.json_to_sheet(finalRows)
 		XLSX.utils.book_append_sheet(wb, ws, "Results")
 
-		const outPath = path.join(
-			this.downloadsDir,
-			`Consolidated_Report_20${year}.xlsx`,
-		)
+		// NEW: Custom readable filename
+		const branchString = branches
+			.map((b) => `${year}${b.toUpperCase()}`)
+			.join("_")
+		const fileName = `RESULTS_${branchString}_DSCE.xlsx`
+		const outPath = path.join(this.downloadsDir, fileName)
+
 		XLSX.writeFile(wb, outPath)
 		return outPath
 	}
 
 	async runBatch(year, branches, callback) {
 		for (const branch of branches) {
-			let fails = 0,
-				count = 1
+			let fails = 0
+			let count = 1
 			const folder = path.join(
 				this.downloadsDir,
 				`Results_20${year}`,
@@ -163,20 +169,31 @@ class ResultScraper {
 				callback(`Checking ${usn}...`)
 
 				const pdfData = await this.fetchResult(usn)
+				let successFound = false
+
 				if (pdfData) {
 					const { name } = await this.extractInfo(pdfData)
-					const cleanName = name.replace(/[^a-zA-Z ]/g, "")
-					fs.writeFileSync(
-						path.join(
-							folder,
-							`${cleanName}_${count.toString().padStart(3, "0")}.pdf`,
-						),
-						pdfData,
-					)
-					fails = 0
-				} else {
-					fails++
+
+					// Only treat it as a success if a valid name was parsed
+					// This prevents "Not Found" PDFs from resetting the fail counter
+					if (name !== "Unknown" && name !== "Error") {
+						const cleanName = name.replace(/[^a-zA-Z ]/g, "")
+						fs.writeFileSync(
+							path.join(
+								folder,
+								`${cleanName}_${count.toString().padStart(3, "0")}.pdf`,
+							),
+							pdfData,
+						)
+						fails = 0 // Reset continuous fails on actual success
+						successFound = true
+					}
 				}
+
+				if (!successFound) {
+					fails++ // Increment if data is null OR name is "Unknown"/"Error"
+				}
+
 				count++
 			}
 		}
