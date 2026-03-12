@@ -7,7 +7,6 @@ import dotenv from "dotenv"
 import XLSX from "xlsx"
 
 dotenv.config()
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -31,9 +30,6 @@ class ResultScraper {
 		try {
 			const data = await pdf(pdfBuffer)
 			const text = data.text
-
-			// Improved regex to capture name without trailing "USN"
-			// Some PDFs might have "Name of the Student : NAME USN"
 			const nameMatch = text.match(
 				/Name\s*of\s*the\s*Student\s*:\s*([A-Z\s]+?)(?=\s+USN|\s*\n|$)/i,
 			)
@@ -91,8 +87,6 @@ class ResultScraper {
 			for (const file of files) {
 				const buffer = fs.readFileSync(path.join(branchPath, file))
 				const { name, sgpa } = await this.extractInfo(buffer)
-
-				// Extracting USN from filename (assuming format: CleanName_001.pdf)
 				const usnSuffix = file.split("_").pop().replace(".pdf", "")
 
 				deptData.push({
@@ -105,7 +99,6 @@ class ResultScraper {
 			if (deptData.length > 0) {
 				finalRows.push(...deptData)
 
-				// FIX: Filter out 0.0 SGPA to get a real average
 				const validSGPAs = deptData
 					.map((s) => s.SGPA)
 					.filter((s) => s > 0)
@@ -116,7 +109,6 @@ class ResultScraper {
 						).toFixed(2)
 					: "0.00"
 
-				// FIX: Use "Student Name" instead of "Name" to avoid 'undefined'
 				const top5 = [...deptData]
 					.sort((a, b) => b.SGPA - a.SGPA)
 					.slice(0, 5)
@@ -142,7 +134,6 @@ class ResultScraper {
 		const ws = XLSX.utils.json_to_sheet(finalRows)
 		XLSX.utils.book_append_sheet(wb, ws, "Results")
 
-		// NEW: Custom readable filename
 		const branchString = branches
 			.map((b) => `${year}${b.toUpperCase()}`)
 			.join("_")

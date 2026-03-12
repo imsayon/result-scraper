@@ -44,7 +44,7 @@ app.post("/scrape-single", async (req, res) => {
 })
 
 app.post("/generate-excel", async (req, res) => {
-	const { year, branches } = req.body // e.g., { "year": "24", "branches": ["AI", "CS", "IS"] }
+	const { year, branches } = req.body // FORMAT => { "year": "24", "branches": ["AI", "CS", "IS"] }
 	try {
 		const filePath = await scraper.generateExcel(year, branches)
 		if (filePath) {
