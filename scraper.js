@@ -1,7 +1,4 @@
-﻿
-
-
-	import express from "express"
+import express from "express"
 import scraper from "./index.js"
 import dotenv from "dotenv"
 import path from "path"
