@@ -1,4 +1,7 @@
-import express from "express"
+﻿
+
+
+	import express from "express"
 import scraper from "./index.js"
 import dotenv from "dotenv"
 import path from "path"
@@ -16,7 +19,7 @@ app.post("/scrape", async (req, res) => {
 
 	status.running = true
 	scraper
-		.runBatch(year, branches, (m) => (status.msg = m))
+		.runBatch(year, branches, (m) => { status.msg = m; console.log(m); })
 		.then(() => {
 			status.running = false
 			status.msg = "Batch scraping completed!"
@@ -67,3 +70,5 @@ app.get("/", (req, res) => {
 })
 const PORT = process.env.PORT || 8000
 app.listen(PORT, () => console.log(`Server live at http://localhost:${PORT}`))
+
+
